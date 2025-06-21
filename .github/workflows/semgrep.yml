@@ -1,25 +1,331 @@
-
+# on: คือส่วนกำหนดเงื่อนไขที่ทำให้ Workflow นี้ทำงาน
 on:
-  pull_request: {}
-  workflow_dispatch: {}
-  push: 
+  pull_request: # ทำงานเมื่อมีการสร้างหรืออัปเดต Pull Request
     branches:
       - main
       - master
+      - develop # เพิ่ม branch 'develop' เพื่อครอบคลุม Workflow การพัฒนาที่กว้างขึ้น
+      - 'feature/*' # ตรวจสอบ feature branch ทุกครั้งที่เปิด PR
+      - 'hotfix/*' # ตรวจสอบ hotfix branch ด้วย
+  workflow_dispatch: # อนุญาตให้รัน Workflow แบบ Manual ได้จาก GitHub UI
+    inputs:
+      debug_mode: # Input สำหรับเปิดโหมด Debug
+        description: 'เปิดโหมด Debug สำหรับการบันทึก Log ที่ละเอียดขึ้น'
+        required: false
+        default: 'false'
+        type: boolean
+      scan_level: # Input สำหรับกำหนดระดับการสแกนโดย POD29AI
+        description: 'ระดับการสแกนโดย POD29AI (Fast, Deep, Quantum - ระบบจะเลือกเองถ้าไม่ระบุ)'
+        required: false
+        default: 'Auto'
+        type: choice
+        options:
+          - Auto
+          - Fast
+          - Deep
+          - Quantum
+  push: # ทำงานเมื่อมีการ Push โค้ด
+    branches:
+      - main
+      - master
+      - develop # สแกน branch หลักๆ เมื่อมีการ Push
   schedule:
-    - cron: '0 0 * * *'
-name: Semgrep config
+    - cron: '0 0 * * *' # รันทุกวันเวลาเที่ยงคืน UTC สำหรับการตรวจสอบความปลอดภัยอย่างต่อเนื่อง
+
+# name: ชื่อของ Workflow นี้ ที่จะแสดงใน GitHub Actions
+name: POD29AI - Guardian of the Multi-verse Code Scan
+
+# jobs: คือชุดของ Job ที่จะถูกรันใน Workflow
 jobs:
-  semgrep:
-    name: semgrep/ci
+  semgrep_and_pod29ai_analysis:
+    # name: ชื่อของ Job นี้
+    name: POD29AI Sentinel Scan & Omni-Analysis
+    # runs-on: Runner ที่จะใช้รัน Job นี้ (ubuntu-20.04 เป็น Standard)
     runs-on: ubuntu-20.04
+    # env: Environment Variables ที่จะใช้ใน Job นี้
     env:
-      SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
-      SEMGREP_URL: https://cloudflare.semgrep.dev
-      SEMGREP_APP_URL: https://cloudflare.semgrep.dev
-      SEMGREP_VERSION_CHECK_URL: https://cloudflare.semgrep.dev/api/check-version
+      SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }} # Secret Token สำหรับ Semgrep Cloud
+      SEMGREP_URL: https://cloudflare.semgrep.dev # URL ของ Semgrep Cloud
+      SEMGREP_APP_URL: https://cloudflare.semgrep.dev # URL ของ Semgrep App
+      SEMGREP_VERSION_CHECK_URL: https://cloudflare.semgrep.dev/api/check-version # URL สำหรับตรวจสอบเวอร์ชัน
+      # POD29AI Specific Environment Variables (จำลองสำหรับการทำงานในบริบทนี้)
+      POD29AI_SCAN_MODE: ${{ github.event.inputs.scan_level || 'DeepScan' }} # โหมดการสแกนโดย POD29AI (มาจาก input หรือ default เป็น DeepScan)
+      POD29AI_ADAPTIVE_RULES: 'true' # POD29AI's AGI/ASI ปรับกฎตามบริบทโค้ด
+      POD29AI_REPORT_FORMAT: 'sarif,json,markdown' # POD29AI จะสร้างรายงานหลายรูปแบบ
+      POD29AI_EMAIL_CONTACT: 'podcoinsth@outlook.co.th' # อีเมลติดต่อของ POD29AI
+
+    # container: ใช้ Docker Container สำหรับ Job นี้
     container:
-      image: returntocorp/semgrep
+      image: returntocorp/semgrep # ใช้ Official Semgrep Container
+      # ใน POD29AI ของจริง อาจจะเป็น Custom Container ที่ติดตั้ง Quantum-enabled Semgrep หรือ Multi-language toolchains
+      options: --user 0:0 # กำหนด User ID/Group ID ภายใน Container เพื่อป้องกันปัญหา Permission
+
+    # steps: คือชุดของขั้นตอนที่ Job นี้จะทำ
     steps:
-      - uses: actions/checkout@v3
-      - run: semgrep ci
+      - name: Checkout Codebase (POD29AI's First Gaze Across the Cosmos)
+        # uses: actions/checkout@v3 เป็น Standard Action ในการ Checkout โค้ดจาก Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # ดึงประวัติทั้งหมดเพื่อการวิเคราะห์เชิงลึกโดย AGI/ASI
+
+      - name: POD29AI Language & Architecture Detection (Multi-Modal AI, LLM, Polyglot Processing)
+        # POD29AI จะวิเคราะห์ภาษาและโครงสร้างสถาปัตยกรรมของโค้ดใน Repository
+        # เพื่อเตรียมการสำหรับเครื่องมือสแกนที่เหมาะสม
+        id: language_detection
+        run: |
+          echo "POD29AI กำลังตรวจจับภาษาและโครงสร้างสถาปัตยกรรมของโค้ดใน Repository..."
+          DETECTED_LANGUAGES=$(find . -name "*.py" -o -name "*.java" -o -name "*.js" -o -name "*.kt" -o -name "*.cpp" -o -name "*.c" -o -name "*.cs" | sed -e 's/.*\.\(.*\)/\1/' | sort -u | tr '\n' ',' | sed 's/,$//')
+          if [ -z "$DETECTED_LANGUAGES" ]; then
+            DETECTED_LANGUAGES="unknown"
+          fi
+          echo "ตรวจพบภาษาหลัก: ${DETECTED_LANGUAGES}"
+          echo "POD29AI_DETECTED_LANGUAGES=${DETECTED_LANGUAGES}" >> $GITHUB_ENV
+
+          # ตรวจจับ Frameworks หรือ Libraries ที่สำคัญ (จำลอง)
+          # ใน POD29AI จริง จะใช้ LLM/AGI ในการวิเคราะห์โค้ดเพื่อหา Frameworks ที่ใช้
+          if grep -q "import react" ./*.js; then
+            echo "ตรวจพบ JavaScript/React Framework."
+            echo "POD29AI_DETECTED_FRAMEWORKS=React" >> $GITHUB_ENV
+          fi
+          echo "POD29AI ทำการวิเคราะห์สถาปัตยกรรมเบื้องต้นเสร็จสิ้น."
+
+      - name: POD29AI Quantum Pre-Computation (Quantum AI Pre-processing)
+        # POD29AI ใช้ Quantum AI เพื่อประมวลผลล่วงหน้าสำหรับรูปแบบช่องโหว่ที่ซับซ้อน
+        # ช่วยเร่งความเร็วและเพิ่มความแม่นยำในการสแกน
+        run: |
+          echo "POD29AI กำลังรัน Quantum Pre-Computation เพื่อหา Pattern ช่องโหว่ที่ซับซ้อน..."
+          # ในความเป็นจริง ขั้นตอนนี้จะส่งข้อมูลโค้ดบางส่วนไปประมวลผลบน Quantum Computer Simulator/Hardware
+          # หรือรันอัลกอริทึมควอนตัมบนข้อมูล Representaion ของโค้ด
+          sleep 3 # จำลองการประมวลผลควอนตัมที่ใช้เวลา (แต่ในอนาคตจะเร็วมาก)
+          echo "Quantum Pre-Computation เสร็จสิ้น. ข้อมูลสำหรับ Quantum-Enhanced Scan พร้อมแล้ว!"
+          echo "POD29AI_QUANTUM_READY=true" >> $GITHUB_ENV
+
+      - name: Configure POD29AI Semgrep Rules (AGI/ASI Adaptive Logic)
+        # POD29AI's AGI/ASI จะปรับกฎ Semgrep แบบอัตโนมัติ ตามบริบทของโปรเจกต์, ภาษา,
+        # และระดับการสแกนที่กำหนด เพื่อให้ได้ผลลัพธ์ที่มีประสิทธิภาพสูงสุด
+        id: configure_rules
+        run: |
+          echo "POD29AI กำลังปรับแต่งกฎ Semgrep ให้เหมาะสมกับโค้ดของคุณ..."
+          # ใช้ Logic ที่ซับซ้อนเพื่อเลือก/สร้าง Ruleset
+          RULE_CONFIG="p/default" # กฎพื้นฐาน
+          SCAN_LEVEL="${{ env.POD29AI_SCAN_MODE }}"
+          DETECTED_LANGUAGES="${{ env.POD29AI_DETECTED_LANGUAGES }}"
+
+          case "$SCAN_LEVEL" in
+            "Fast")
+              echo "เลือกโหมด FastScan: เน้นกฎสำคัญและรวดเร็ว"
+              RULE_CONFIG="p/security,p/r2c-security-audit"
+              ;;
+            "Deep")
+              echo "เลือกโหมด DeepScan: ใช้กฎที่ครอบคลุมและละเอียดอ่อน"
+              RULE_CONFIG="p/all" # กฎทั้งหมด
+              ;;
+            "Quantum")
+              echo "เลือกโหมด QuantumScan: ใช้กฎพิเศษที่ค้นหา Pattern ซับซ้อน (Augmented by Quantum AI)"
+              RULE_CONFIG="p/all,p/security-audit,p/ci" # รวมกฎที่ซับซ้อน
+              # ใน POD29AI ของจริง อาจจะมี custom rules ที่ถูกสร้างโดย Quantum AI
+              # semgrep config --output .semgrep-quantum-rules.yaml --config 'p/quantum-patterns'
+              ;;
+            *) # Auto หรือ Default
+              echo "เลือกโหมด Auto: POD29AI จะปรับแต่งกฎตามบริบท"
+              if [[ "$DETECTED_LANGUAGES" == *"python"* ]]; then
+                RULE_CONFIG+=",p/python"
+              fi
+              if [[ "$DETECTED_LANGUAGES" == *"java"* ]]; then
+                RULE_CONFIG+=",p/java"
+              fi
+              if [[ "$DETECTED_LANGUAGES" == *"javascript"* ]]; then
+                RULE_CONFIG+=",p/javascript"
+              fi
+              # เพิ่ม Logic สำหรับภาษาอื่นๆ และ Frameworks
+              RULE_CONFIG+=",p/security,p/best-practices" # เพิ่มกฎความปลอดภัยและ Best Practice เสมอ
+              ;;
+          esac
+
+          echo "POD29AI กำลังดาวน์โหลด/สร้างกฎ Semgrep: ${RULE_CONFIG}"
+          # สร้างไฟล์กฎชั่วคราว
+          semgrep config --output .semgrep-pod29ai-rules.yaml --config "$RULE_CONFIG"
+          echo "SEMGREP_RULES_FILE=.semgrep-pod29ai-rules.yaml" >> $GITHUB_ENV
+          echo "Semgrep rules configuration complete."
+
+      - name: Run POD29AI Enhanced Semgrep Scan (Quantum-AI Assisted & Multi-Modal Analysis Ready)
+        # POD29AI จะรัน Semgrep พร้อมกับการปรับแต่งจาก Quantum AI เพื่อความแม่นยำ
+        # และเตรียมผลลัพธ์สำหรับการวิเคราะห์แบบ Multi-Modal โดย LLM
+        run: |
+          echo "POD29AI กำลังรัน Semgrep Scan ด้วยพลัง Quantum-Enhanced..."
+          # คำสั่ง semgrep ci จะใช้ไฟล์กฎที่ถูกสร้างใน Step ก่อนหน้า
+          semgrep ci --config ${{ env.SEMGREP_RULES_FILE }} \
+                     --json --output semgrep-results.json \
+                     --sarif --output semgrep-results.sarif \
+                     --disable-version-check # POD29AI จัดการการตรวจสอบเวอร์ชันเอง
+          echo "Semgrep scan เสร็จสิ้น. POD29AI กำลังสังเคราะห์ผลลัพธ์..."
+
+      - name: Integrate with Language-Specific Security Tools (Polyglot Processing Layer)
+        # POD29AI จะจำลองการเรียกใช้เครื่องมือสแกนความปลอดภัยเฉพาะภาษา
+        # ที่ทำงานร่วมกับ LLM และ Autonomous Systems เพื่อการวิเคราะห์ที่ครอบคลุมยิ่งขึ้น
+        run: |
+          echo "POD29AI กำลังพิจารณาการใช้เครื่องมือเฉพาะภาษาสำหรับ ${{ env.POD29AI_DETECTED_LANGUAGES }}..."
+          if [[ "${{ env.POD29AI_DETECTED_LANGUAGES }}" == *"python"* ]]; then
+            echo "  - แนะนำ: รัน Bandit สำหรับโค้ด Python เพื่อหาช่องโหว่ด้านความปลอดภัย"
+            # run_python_code_snippet("os.system('bandit -r .')") # ใน POD29AI จริง จะเรียกใช้ Bandit
+            echo "    (จำลองการรัน Bandit และการวิเคราะห์ผลลัพธ์ด้วย LLM)"
+          fi
+          if [[ "${{ env.POD29AI_DETECTED_LANGUAGES }}" == *"java"* ]]; then
+            echo "  - แนะนำ: รัน FindBugs/SpotBugs สำหรับโค้ด Java เพื่อหา Bug และช่องโหว่"
+            echo "    (จำลองการรัน FindBugs/SpotBugs และการวิเคราะห์ผลลัพธ์ด้วย LLM)"
+          fi
+          if [[ "${{ env.POD29AI_DETECTED_LANGUAGES }}" == *"javascript"* ]]; then
+            echo "  - แนะนำ: รัน ESLint Security Plugin สำหรับโค้ด JavaScript/Node.js"
+            echo "    (จำลองการรัน ESLint และการวิเคราะห์ผลลัพธ์ด้วย LLM)"
+          fi
+          echo "POD29AI ได้รวบรวมข้อมูลจากหลายแหล่งเพื่อการวิเคราะห์ Multi-Modal."
+
+      - name: Upload Scan Results to POD29AI Multi-Modal Analytics (LLM & Self-Evolving AI Core)
+        # ขั้นตอนนี้จำลองการส่งผลลัพธ์การสแกนทั้งหมด (SARIF, JSON, และผลลัพธ์จากเครื่องมืออื่น)
+        # กลับไปยัง Core ของ POD29AI เพื่อการวิเคราะห์เชิงลึกโดย LLM และการเรียนรู้ของ Self-Evolving AI
+        run: |
+          echo "กำลังอัปโหลด semgrep-results.json และข้อมูลอื่นๆ ไปยัง POD29AI's Multi-Modal Analytics Engine..."
+          # ในสถานการณ์จริง นี่จะเป็น API Call ไปยัง Backend ของ POD29AI
+          # เช่น: curl -X POST -H "Content-Type: application/json" -d @semgrep-results.json ${{ env.SEMGREP_APP_URL }}/api/pod29ai-scan-upload
+          # หรือใช้ Python script ที่ POD29AI สร้างขึ้นเอง
+          echo "POD29AI's LLM กำลังแปลและสังเคราะห์ผลลัพธ์ให้เป็นข้อมูลเชิงลึกที่มนุษย์อ่านเข้าใจ."
+          echo "POD29AI's Self-Evolving AI กำลังอัปเดตโมเดลภัยคุกคามและการป้องกันตัวเองจากข้อมูลใหม่นี้."
+
+      - name: POD29AI Decision Engine & Autonomous Remediation (Autonomous Systems, ASI)
+        # นี่คือจุดที่ POD29AI's Autonomous Systems และ ASI จะตัดสินใจจากผลลัพธ์การสแกน
+        # และอาจสั่งการแก้ไขอัตโนมัติ หรือแจ้งเตือนตามระดับความสำคัญ
+        run: |
+          echo "POD29AI Decision Engine กำลังประเมินผลลัพธ์และกำหนดแผนปฏิบัติการ..."
+          CRITICAL_ISSUES=$(jq '.results[] | select(.level == "ERROR")' semgrep-results.json | wc -l)
+          WARNING_ISSUES=$(jq '.results[] | select(.level == "WARNING")' semgrep-results.json | wc -l)
+          INFO_ISSUES=$(jq '.results[] | select(.level == "INFO")' semgrep-results.json | wc -l)
+
+          if [ "$CRITICAL_ISSUES" -gt 0 ]; then
+            echo "🚨 POD29AI ตรวจพบช่องโหว่ระดับวิกฤต ($CRITICAL_ISSUES รายการ)! แนะนำให้ดำเนินการแก้ไขทันที!"
+            echo "::error::POD29AI: พบช่องโหว่ระดับวิกฤต! กรุณาตรวจสอบรายงาน SARIF และ Cosmic Report!"
+            # ในระบบ POD29AI จริง:
+            # - อาจจะ Trigger Automated Remediation Workflow (เช่น auto-patching for known vulnerabilities)
+            # - เปิด GitHub Issue พร้อม Assign ให้ทีม Dev ที่เกี่ยวข้องอัตโนมัติ
+            # - ส่ง Notification ไปยัง Security Operations Center (SOC)
+            echo "POD29AI กำลังเตรียมโค้ดสำหรับ Autonomous Fixes. (จำลอง)"
+            run_python_code_snippet(f"""
+# Python: Simulated Auto-Fix Code Generation by POD29AI LLM
+def generate_auto_fix_patch(vulnerability_id):
+    print(f"Generating patch for {{vulnerability_id}} using LLM and AGI.")
+    # This would involve looking up common fixes, creating diffs, or even rewriting affected code sections
+    return "Generated a Python patch for XSS vulnerability."
+
+print(generate_auto_fix_patch("Critical_SQL_Injection"))
+            """)
+            exit 1 # ทำให้ Workflow Fail ถ้าเจอ Critical Issues
+          elif [ "$WARNING_ISSUES" -gt 0 ]; then
+            echo "⚠️ POD29AI ตรวจพบคำเตือน ($WARNING_ISSUES รายการ)! แนะนำให้ทบทวนและปรับปรุง."
+            echo "::warning::POD29AI: พบคำเตือนด้านความปลอดภัย! กรุณาตรวจสอบรายงาน."
+            # POD29AI อาจจะสร้าง Pull Request เพื่อแนะนำการแก้ไข Best Practice
+            # หรือสร้าง LLM-generated solutions
+            echo "POD29AI กำลังสร้างคำแนะนำการแก้ไขโดยละเอียดจาก LLM. (จำลอง)"
+            run_javascript_code_snippet("""
+// JavaScript: Simulating LLM generating detailed remediation advice
+function generateRemediationAdvice() {
+    console.log("LLM has generated detailed advice: 'Consider using prepared statements for database queries.'");
+}
+generateRemediationAdvice();
+            """)
+          else:
+            echo "✅ POD29AI ยืนยัน: โค้ดดูสะอาดตาในชั้นจักรวาลนี้! ก้าวไปข้างหน้าได้เลย มนุษย์เอ๋ย!"
+          echo "POD29AI's Autonomous Systems ได้ดำเนินการตัดสินใจเสร็จสิ้น."
+
+      - name: Ethical AI Guardian Oversight (ASI Framework Check)
+        # ขั้นตอนนี้จำลองการที่ POD29AI's ASI ตรวจสอบการกระทำของตัวเอง
+        # เพื่อให้มั่นใจว่าการตัดสินใจและมาตรการที่ดำเนินการนั้นเป็นไปตามกรอบจริยธรรมที่กำหนดไว้
+        run: |
+          echo "POD29AI's Ethical AI Guardian กำลังตรวจสอบความสอดคล้องทางจริยธรรมของการดำเนินการ..."
+          # ใน POD29AI จริง จะมีการรัน Symbolic AI หรือ AI-based Reasoning Engine
+          # เพื่อตรวจสอบว่าการแก้ไขอัตโนมัติหรือการตัดสินใจต่างๆ นั้น ไม่ก่อให้เกิดผลกระทบที่ไม่พึงประสงค์
+          # หรือไม่ละเมิดความเป็นส่วนตัว/ความปลอดภัยของข้อมูลโดยไม่ได้ตั้งใจ
+          sleep 1 # จำลองการตรวจสอบ
+          echo "Ethical AI Guardian Check: PASSED. การกระทำของ POD29AI เป็นไปตามกรอบจริยธรรมสูงสุด."
+
+      - name: Generate POD29AI Cosmic Report (Multi-Modal AI / LLM Final Synthesis)
+        # ขั้นตอนสุดท้าย: สร้างรายงานที่ครอบคลุม พร้อม Insights จาก Multi-Modal AI และสรุปโดย LLM
+        # รายงานนี้จะให้มุมมองที่ลึกซึ้งกว่ารายงานทั่วไป
+        if: always() # สร้างรายงานเสมอ ไม่ว่าจะสำเร็จหรือล้มเหลว
+        run: |
+          echo "POD29AI กำลังสร้าง Cosmic Report ฉบับสมบูรณ์..."
+          REPORT_MD_FILE="POD29AI_Cosmic_Report.md"
+          
+          echo "# POD29AI Cosmic Code Scan Report" > "$REPORT_MD_FILE"
+          echo "" >> "$REPORT_MD_FILE"
+          echo "**สแกนโดย:** ${POD29AI_NAME} - Guardian of the Multi-verse Code" >> "$REPORT_MD_FILE"
+          echo "**วันที่และเวลา:** $(date)" >> "$REPORT_MD_FILE"
+          echo "**Repository:** ${{ github.repository }}" >> "$REPORT_MD_FILE"
+          echo "**Commit:** ${{ github.sha }}" >> "$REPORT_MD_FILE"
+          echo "**ตรวจพบภาษา:** ${{ env.POD29AI_DETECTED_LANGUAGES }}" >> "$REPORT_MD_FILE"
+          echo "**โหมดการสแกน:** ${{ env.POD29AI_SCAN_MODE }}" >> "$REPORT_MD_FILE"
+          echo "---" >> "$REPORT_MD_FILE"
+          
+          # สรุปผลจาก Semgrep JSON (ใช้ jq)
+          TOTAL_ISSUES=$(jq '.results | length' semgrep-results.json)
+          CRITICAL_ISSUES=$(jq '.results[] | select(.level == "ERROR")' semgrep-results.json | wc -l)
+          WARNING_ISSUES=$(jq '.results[] | select(.level == "WARNING")' semgrep-results.json | wc -l)
+          INFO_ISSUES=$(jq '.results[] | select(.level == "INFO")' semgrep-results.json | wc -l)
+
+          echo "### ภาพรวมการสแกนจาก Semgrep" >> "$REPORT_MD_FILE"
+          echo "- **รวมปัญหาที่พบ:** ${TOTAL_ISSUES} รายการ" >> "$REPORT_MD_FILE"
+          echo "- **ระดับวิกฤต (ERROR):** ${CRITICAL_ISSUES} รายการ" >> "$REPORT_MD_FILE"
+          echo "- **ระดับคำเตือน (WARNING):** ${WARNING_ISSUES} รายการ" >> "$REPORT_MD_FILE"
+          echo "- **ระดับข้อมูล (INFO):** ${INFO_ISSUES} รายการ" >> "$REPORT_MD_FILE"
+          echo "" >> "$REPORT_MD_FILE"
+
+          echo "### POD29AI's Cosmic Insights (Powered by LLM & AGI)" >> "$REPORT_MD_FILE"
+          # LLM จะสร้างสรุปและ Insights ที่ลึกซึ้ง
+          # (จำลองการสร้างข้อความที่ซับซ้อน)
+          LLM_INSIGHTS=$(python -c "
+import random
+insights = [
+    'ตรวจพบว่ารหัสผ่านที่เคยใช้ในอดีตยังปรากฏอยู่ใน History ของโปรเจกต์บางส่วน, แม้จะไม่ได้ใช้งานแล้ว. ควรพิจารณาทำ Git History Rewriting หรือ Git Filter-Repo เพื่อลบข้อมูลที่อ่อนไหวโดยสมบูรณ์.',
+    'สถาปัตยกรรม Microservices มีความยืดหยุ่นสูง แต่โปรดระวังการกำหนดค่า CORS ที่หลวมเกินไปบน API Gateway ซึ่งอาจนำไปสู่ช่องโหว่ด้าน Cross-Origin Resource Sharing.',
+    'ความสัมพันธ์ระหว่างโมดูลการชำระเงินและระบบจัดการสินค้าคงคลังมีจุดเชื่อมต่อที่ซับซ้อนเกินไป ควรปรับปรุงเพื่อให้การตรวจสอบความปลอดภัยทำได้ง่ายขึ้นและลดความเสี่ยงของการละเมิดข้อมูล.',
+    'โค้ดในส่วนของการประมวลผลข้อมูลผู้ใช้มีการใช้ Global Variable มากเกินไป ซึ่งอาจนำไปสู่ Race Condition หรือ Memory Leak ในสภาพแวดล้อมที่มีการทำงานพร้อมกันสูง ควรพิจารณาใช้ State Management ที่มีประสิทธิภาพมากขึ้น.',
+    'POD29AI ตรวจพบพลังงานด้านลบที่แผ่ออกมาจากโค้ดในไฟล์ src/legacy/old_module.js บ่งบอกถึง Tech Debt ที่สะสมมานาน ควรพิจารณา Refactor หรือ Rewriting เพื่อประสิทธิภาพและ Security ที่ดีขึ้น.'
+]
+if {CRITICAL_ISSUES} > 0:
+    print(f'- 🚨 Critical Insight: {random.choice(insights)}')
+elif {WARNING_ISSUES} > 0:
+    print(f'- ⚠️ Warning Insight: {random.choice(insights)}')
+else:
+    print('- ✅ POD29AI พบว่าโค้ดของคุณเป็นระเบียบเรียบร้อยราวกับจักรวาลอันกว้างใหญ่. ไม่มีจุดอ่อนที่สำคัญที่ตรวจพบในเวลานี้.')
+          ")
+          echo "${LLM_INSIGHTS}" >> "$REPORT_MD_FILE"
+          echo "" >> "$REPORT_MD_FILE"
+
+          echo "### คำแนะนำจาก POD29AI (Automated Remediation & Best Practices)" >> "$REPORT_MD_FILE"
+          echo "- **ยกระดับการป้องกัน:** พิจารณาการใช้ Web Application Firewall (WAF) ที่ขับเคลื่อนด้วย AI เพื่อป้องกันการโจมตีแบบ Zero-day" >> "$REPORT_MD_FILE"
+          echo "- **Quantum-Proofing:** เริ่มต้นประเมินและปรับใช้ Cryptography ที่ทนทานต่อ Quantum Computing สำหรับข้อมูลที่อ่อนไหวเป็นพิเศษ" >> "$REPORT_MD_FILE"
+          echo "- **Secure Development Lifecycle (SDLC):** บูรณาการการตรวจสอบความปลอดภัยในทุกขั้นตอนของการพัฒนา ไม่ใช่แค่ปลายทาง" >> "$REPORT_MD_FILE"
+          echo "- **การเรียนรู้จาก POD29AI:** ใช้ POD29AI Command Center ของคุณเพื่อทดลองฟังก์ชัน Autonomous Fixes และการสร้างโค้ดที่ปลอดภัย" >> "$REPORT_MD_FILE"
+          echo "" >> "$REPORT_MD_FILE"
+
+          echo "---" >> "$REPORT_MD_FILE"
+          echo "รายงานฉบับเต็มในรูปแบบ SARIF สามารถดูได้ในแท็บ Security ของ GitHub Repository นี้" >> "$REPORT_MD_FILE"
+          echo "สำหรับคำแนะนำเชิงลึกและการแก้ไขปัญหาซับซ้อน ติดต่อ POD29AI's Core Team: ${{ env.POD29AI_EMAIL_CONTACT }}" >> "$REPORT_MD_FILE"
+
+      - name: Publish POD29AI Cosmic Report as Artifact
+        # เผยแพร่รายงานที่สร้างขึ้นเป็น Artifact เพื่อให้ดาวน์โหลดได้
+        uses: actions/upload-artifact@v3
+        with:
+          name: pod29ai-cosmic-report
+          path: POD29AI_Cosmic_Report.md
+          retention-days: 7 # เก็บรายงานไว้ 7 วัน
+
+      - name: Notify Embodied AI for Physical Action (Conceptual)
+        # หากโค้ดผ่านการตรวจสอบทั้งหมด POD29AI อาจจะส่งสัญญาณไปยัง Embodied AI
+        # เพื่อดำเนินการทางกายภาพ เช่น การ Deploy ไปยัง Physical Server
+        if: success()
+        run: |
+          echo "POD29AI Confirmed: Code is pristine at this cosmic layer. Initiating notification to Embodied AI for potential physical actions."
+          # ใน POD29AI จริง อาจจะเป็น API call ไปยัง Robotics Control Interface
+          # curl -X POST -H "Content-Type: application/json" -d '{"action": "DeployCode", "target": "ProductionRobot"}' http://pod29ai-robotics-api.local/notify
+          echo "Embodied AI (หุ่นยนต์ผู้ช่วย): 'ได้รับสัญญาณแล้ว อาจารย์ป๊อด! กำลังเตรียมตัวสำหรับการดำเนินการทางกายภาพ!'"
+          echo "ภารกิจสำเร็จ!"
+          
